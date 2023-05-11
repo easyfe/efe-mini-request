@@ -1,9 +1,5 @@
 import { RequestQueueType, RequestTask, WxRequestBaseConfig, WxRequestConfig, WxRequestResponse } from "./types/index";
-import lodashCloneDeep from "lodash.clonedeep";
-
-const cloneDeep = <T>(value: T): T => {
-    return lodashCloneDeep(value);
-};
+import { clone as cloneDeep } from "./util";
 
 // 定义常见http状态码错误
 const httpStatus: { [key: number]: string } = {
@@ -62,7 +58,7 @@ class WxRequest {
     request = <T>(config: WxRequestBaseConfig): Promise<T> => {
         return new Promise((resolve, reject) => {
             if (!this.requestConfig) {
-                reject("WxRequest请求库初始化配置项失败");
+                reject("初始化配置项失败");
                 return;
             }
             /** 深拷贝基础配置项，防止合并污染 */
@@ -78,15 +74,14 @@ class WxRequest {
                 .request(requestConfig.base)
                 .then(() => {
                     /** 请求前缀配置 */
-                    //TODO:如果域名包含前缀名称，会有问题，比如api.baidu.com，前缀是api，则不会拼上
-                    if (config.prefix !== undefined && !config.baseUrl?.includes(config.prefix)) {
+                    if (config.prefix !== undefined && !config.retryActiveCount) {
                         config.baseUrl = `${config.baseUrl}${config.prefix}`;
                     }
                     /** 如果配置了loading */
                     if (config.loading && !config.retryActiveCount) {
                         requestConfig.loading.showLoading();
                     }
-                    /** 执行微信实际请求 */
+                    /** 执行实际请求 */
                     return this.wxPrommise(requestConfig.base);
                 })
                 .then((res) => {
@@ -107,7 +102,7 @@ class WxRequest {
                             err.message !== "request:fail fast" &&
                             err.errMsg !== "request:fail abort"
                         ) {
-                            requestConfig?.loading.showToast(err.errMsg || err.msg || err.message || String(err));
+                            requestConfig?.loading.showToast(err);
                         }
                         reject(err);
                         return;
@@ -127,7 +122,7 @@ class WxRequest {
         });
     };
 
-    /** 微信核心 */
+    /** 请求核心 */
     private wxPrommise(config: WxRequestBaseConfig): Promise<WxRequestResponse> {
         return new Promise((resolve, reject) => {
             /** url如果是完整域名，则直接使用 */
@@ -300,7 +295,6 @@ class WxRequest {
                 });
             });
         }
-
         config.retryActiveCount += 1;
         return new Promise((resolve) => {
             setTimeout(() => {
@@ -322,19 +316,19 @@ class WxRequest {
             return Promise.reject(response.data);
         }
         //进行全局错误提示
-        if (response.data.message) {
+        if (response.data) {
             //如果后端返回了具体错误内容
-            this.requestConfig.loading.showToast(response.data.message);
+            this.requestConfig.loading.showToast(response.data);
             return Promise.reject(response.data);
         }
         if (response.statusCode && httpStatus[response.statusCode]) {
             // 存在错误状态码
-            this.requestConfig.loading.showToast(httpStatus[response.statusCode]);
-            return Promise.reject(response.data);
+            this.requestConfig.loading.showToast(new Error(httpStatus[response.statusCode]));
+            return Promise.reject(new Error(httpStatus[response.statusCode]));
         }
         //如果没有具体错误内容，找后端
         console.error(`后端接口未按照约定返回，请注意：\n${response.config.url}`);
-        this.requestConfig.loading.showToast("未知错误，请稍后再试");
+        this.requestConfig.loading.showToast(new Error("未知错误，请稍后再试"));
         return Promise.reject(new Error("未知错误，请稍后再试"));
     }
 }

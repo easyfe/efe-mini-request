@@ -41,14 +41,14 @@
 安装：
 
 ```typescript
-npm i -S @easyfe/mini-request lodash.clonedeep
+npm i -S @easyfe/mini-request
 ```
 
 创建请求实例：
 
 ```typescript
 import loading from "./loading";
-import MpRequest from "@easyfe/mp-request";
+import MpRequest from "@easyfe/mini-request";
 const app = getApp<AppOption>();
 //初始化请求库，需要传入请求实例，以及相应拦截器
 const service = new MpRequest(wx.request, {
@@ -59,9 +59,7 @@ const service = new MpRequest(wx.request, {
         url: "",
         prefix: "",
         header: {
-            "access-token": app.globalData.token,
-            "app-type": "xcx",
-            realhost: app.globalData.realhost
+            "access-token": app.globalData.token
         }
     },
     loading,
@@ -79,8 +77,6 @@ const service = new MpRequest(wx.request, {
             if (process.env.NODE_ENV === "production") {
                 console.log(`接口"${res.config.url}"`, `传参数是：`, res.config.data, `返回数据结构为:`, res.data);
             }
-            //如果后端没有返回message，需要实现message定义
-            res.data.message = res.data.msg;
             //业务逻辑判断
             if (res.data.code !== 200) {
                 //如果业务逻辑错误，则直接reject返回值，可在此对res进行其他处理
@@ -123,9 +119,9 @@ const loading = {
             }, 300);
         });
     },
-    showToast(msg: string) {
+    showToast(err) {
         wx.showToast({
-            title: msg,
+            title: err.message || err.errMsg || err.msg || String(err),
             icon: "none",
             duration: 3 * 1000
         });
@@ -153,9 +149,9 @@ export default loading;
 ```typescript
 import request from "@/packages/request/index";
 
-export function ReadAccountList(params: listParams): Promise<accoundtList> {
+export function Test(params: listParams): Promise<string> {
     return request({
-        url: "/app/account/index",
+        url: "/test",
         method: "get",
         retry: true,
         params

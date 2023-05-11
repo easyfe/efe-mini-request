@@ -36,7 +36,7 @@ export interface WxRequestConfig {
     loading: {
         showLoading: () => void;
         clearLoading: () => void | Promise<any>;
-        showToast: (e: string) => void;
+        showToast: (e: Record<string, any>) => void;
         clearToast: () => void;
     };
     /** 拦截器 */
